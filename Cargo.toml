@@ -1,5 +1,5 @@
 [package]
-name = "monte-carlo-options"
+name = "mcoptions"
 version = "0.1.0"
 edition = "2021"
 
@@ -15,5 +15,5 @@ wide = "0.7.13"
 criterion = { version = "0.4", features = ["html_reports"] }
 
 [[bench]]
-name = "my_benchmark"
+name = "benchmark"
 harness = false
