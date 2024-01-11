@@ -1,9 +1,7 @@
 /*
 TODO:
-- Analyze assemly code
 - SIMD randomization
 
-QUESTIONS:
 */
 
 pub mod bs;

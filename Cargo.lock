@@ -276,7 +276,9 @@ dependencies = [
  "bytemuck",
  "criterion",
  "rand",
+ "rand_core",
  "rand_distr",
+ "simd_rand",
  "wide",
 ]
 
@@ -508,6 +510,14 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "simd_rand"
+version = "0.1.0"
+source = "git+https://github.com/ashayp22/simd-rand#b8c059782bca4fb0ca35aa7ecc565d32fad58e40"
+dependencies = [
+ "rand_core",
 ]
 
 [[package]]

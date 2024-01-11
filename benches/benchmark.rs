@@ -1,9 +1,12 @@
-use mcoptions::mc32x8;
-use mcoptions::mc;
-use mcoptions::mcfast;
+use mcoptions::{
+    mc32x8,
+    mc,
+    mcfast
+};
 use wide::*;
-
 use criterion::{criterion_group, criterion_main, Criterion};
+use rand_core::{RngCore, SeedableRng};
+use simd_rand::portable::*;
 
 const START_SPOT : i32 = 50;
 const END_SPOT : i32 = 162;
@@ -23,6 +26,10 @@ fn criterion_benchmark1(c: &mut Criterion) {
     let dividend_yield_f32x8 : f32x8 = f32x8::splat(DIVIDEND_YIELD);
     let volatility_f32x8 : f32x8 = f32x8::splat(VOLATILITY);
 
+    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
+    rand::thread_rng().fill_bytes(&mut *seed);
+    let mut rng : Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
     c.bench_function("monte carlo", |b| b.iter(|| {
         for spot in START_SPOT..END_SPOT {
             _ = mc::call_price(spot as f32, STRIKE, VOLATILITY, RISK_FREE_RATE, YEARS_TO_EXPIRY, DIVIDEND_YIELD, NUM_STEPS, NUM_TRIALS);
@@ -31,7 +38,7 @@ fn criterion_benchmark1(c: &mut Criterion) {
 
     c.bench_function("monte carlo fast", |b| b.iter(|| {
         for spot in START_SPOT..END_SPOT {
-            _ = mcfast::call_price(spot as f32, STRIKE, VOLATILITY, RISK_FREE_RATE, YEARS_TO_EXPIRY, DIVIDEND_YIELD, NUM_STEPS, NUM_TRIALS);
+            _ = mcfast::call_price(spot as f32, STRIKE, VOLATILITY, RISK_FREE_RATE, YEARS_TO_EXPIRY, DIVIDEND_YIELD, NUM_STEPS, NUM_TRIALS, rng);
         }
     }));
 

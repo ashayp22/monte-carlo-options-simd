@@ -1,4 +1,4 @@
-fn erf(x : f32) -> f32 {
+fn erf(x: f32) -> f32 {
     let t = x.signum();
     let e = x.abs();
     const N: f32 = 0.3275911;
@@ -12,8 +12,8 @@ fn erf(x : f32) -> f32 {
     t * m
 }
 
-fn normal_cdf(x : f32) -> f32 {
-    0.5 * (1.0 + erf(x / 2.0f32.sqrt()))
+fn normal_cdf(x: f32) -> f32 {
+    0.5 * (1.0 + erf(x / (2.0f32).sqrt()))
 }
 
 pub fn call_price(
@@ -24,9 +24,14 @@ pub fn call_price(
     years_to_expiry: f32,
     dividend_yield: f32
 ) -> f32 {
-    let d1 : f32 = ((spot / strike).ln() + (risk_free_rate - dividend_yield + ((volatility * volatility) / 2.0))* years_to_expiry) / (volatility * years_to_expiry.sqrt());
-    let d2 : f32 = d1 - volatility * years_to_expiry.sqrt();
+    let d1: f32 =
+        ((spot / strike).ln() +
+            (risk_free_rate - dividend_yield + (volatility * volatility) / 2.0) * years_to_expiry) /
+        (volatility * years_to_expiry.sqrt());
+    let d2: f32 = d1 - volatility * years_to_expiry.sqrt();
 
-    let call : f32 = spot * (-dividend_yield * years_to_expiry).exp() * normal_cdf(d1) - strike * (-risk_free_rate * years_to_expiry).exp() * normal_cdf(d2);
+    let call: f32 =
+        spot * (-dividend_yield * years_to_expiry).exp() * normal_cdf(d1) -
+        strike * (-risk_free_rate * years_to_expiry).exp() * normal_cdf(d2);
     call
 }

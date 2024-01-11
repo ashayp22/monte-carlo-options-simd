@@ -10,6 +10,8 @@ bytemuck = "1.14.0"
 rand = "0.8.5"
 rand_distr = "0.4.3"
 wide = "0.7.13"
+simd_rand = { git = "https://github.com/ashayp22/simd-rand" }
+rand_core = "0.6.4"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }
