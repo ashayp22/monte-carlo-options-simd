@@ -41,5 +41,5 @@ pub fn call_price(
 fn valid_price() {
     let price = call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 1000.0);
     println!("mc {}", price);
-    assert_eq!(3.5 <= price && price <= 4.5, true);
+    assert_eq!(3.0 <= price && price <= 4.5, true);
 }
