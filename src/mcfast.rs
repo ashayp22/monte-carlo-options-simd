@@ -1,24 +1,7 @@
-use rand_distr::StandardNormal;
-use rand::Rng;
 use wide::*;
 use simd_rand::portable::*;
-use rand_core::{ RngCore, SeedableRng };
-
-fn get_rand_uniform_f32x8(rng: &mut Xoshiro256PlusPlusX8) -> f32x8 {
-    let rand_f64x8: [f64; 8] = rng.next_f64x8().to_array();
-    let random_mult = f32x8::from([
-        rand_f64x8[0] as f32,
-        rand_f64x8[1] as f32,
-        rand_f64x8[2] as f32,
-        rand_f64x8[3] as f32,
-        rand_f64x8[4] as f32,
-        rand_f64x8[5] as f32,
-        rand_f64x8[6] as f32,
-        rand_f64x8[7] as f32,
-    ]);
-
-    random_mult
-}
+use crate::rand32x8::get_rand_uniform_f32x8;
+use rand_core::{RngCore, SeedableRng};
 
 pub fn call_price(
     spot: f32,
@@ -28,12 +11,9 @@ pub fn call_price(
     years_to_expiry: f32,
     dividend_yield: f32,
     steps: f32,
-    num_trials: f32
+    num_trials: f32,
+    rng: &mut Xoshiro256PlusPlusX8
 ) -> f32 {
-    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
-    rand::thread_rng().fill_bytes(&mut *seed);
-    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
-
     let dt: f32 = years_to_expiry / steps;
     let nudt: f32 = (risk_free_rate - dividend_yield - 0.5 * (volatility * volatility)) * dt;
     let sidt: f32 = volatility * dt.sqrt();
@@ -42,20 +22,22 @@ pub fn call_price(
     let zeros: f32x8 = f32x8::splat(0.0);
     let two_pi = f32x8::splat(2.0 * std::f32::consts::PI);
     let neg_two = f32x8::splat(-2.0);
+    let half_steps: i32 = (steps as i32)/2;
 
     let mut total_prices: f32x8 = f32x8::splat(0.0);
 
     for _ in 0..(num_trials as i32) / 8 {
         let mut stock_price_mult: f32x8 = f32x8::splat(spot);
 
-        for _ in 0..(steps as i32) / 2 {
-            let first: f32x8 = get_rand_uniform_f32x8(&mut rng);
-            let second: f32x8 = get_rand_uniform_f32x8(&mut rng);    
+        for _ in 0..half_steps {
+            let first: f32x8 = get_rand_uniform_f32x8(rng);
+            let second: f32x8 = get_rand_uniform_f32x8(rng);    
 
-            let first_random_mult = (neg_two * first.ln()).sqrt() * (two_pi * second).cos();
-            let second_random_mult = (neg_two * first.ln()).sqrt() * (two_pi * second).sin();
+            let top = (neg_two * first.ln()).sqrt();
+            let sin_rand = (two_pi * second).sin();
+            let cos_rand = (two_pi * second).cos();
 
-            stock_price_mult = stock_price_mult * (add * first_random_mult).exp() * (add * second_random_mult).exp();
+            stock_price_mult = stock_price_mult * (add * (top * (sin_rand + cos_rand))).exp();
         }
 
         let price: f32x8 = stock_price_mult + strike_decrease;
@@ -71,7 +53,11 @@ pub fn call_price(
 
 #[test]
 fn valid_price() {
-    let price = call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 1000.0);
+    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
+    rand::thread_rng().fill_bytes(&mut *seed);
+    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
+    let price = call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 1000.0, &mut rng);
     println!("mcfast {}", price);
     assert_eq!(3.5 <= price && price <= 4.5, true);
 }

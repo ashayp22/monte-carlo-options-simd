@@ -1,10 +1,7 @@
-use rand_distr::StandardNormal;
-use rand::Rng;
 use wide::*;
-
-fn get_rand_norm() -> f32 {
-    rand::thread_rng().sample::<f32, _>(StandardNormal)
-}
+use simd_rand::portable::*;
+use crate::rand32x8::get_rand_uniform_f32x8;
+use rand_core::{RngCore, SeedableRng};
 
 pub fn call_price(
     spot: f32x8,
@@ -14,33 +11,33 @@ pub fn call_price(
     years_to_expiry: f32x8,
     dividend_yield: f32x8,
     steps: f32,
-    num_trials: f32
+    num_trials: f32,
+    rng: &mut Xoshiro256PlusPlusX8
 ) -> f32x8 {
     let dt: f32x8 = years_to_expiry / steps;
     let nudt: f32x8 = (risk_free_rate - dividend_yield - 0.5 * (volatility * volatility)) * dt;
     let sidt: f32x8 = volatility * dt.sqrt();
     let add: f32x8 = nudt + sidt;
+    let half_steps: i32 = (steps as i32)/2;
+    let two_pi = f32x8::splat(2.0 * std::f32::consts::PI);
+    let neg_two = f32x8::splat(-2.0);
 
     let zeros: f32x8 = f32x8::splat(0.0);
     let mut total_price: f32x8 = f32x8::splat(0.0);
 
+
     for _ in 0..num_trials as i32 {
         let mut stock_price_mult = f32x8::splat(1.0);
 
-        for _ in 0..steps as i32 {
-            let vals: [f32; 8] = [
-                get_rand_norm(),
-                get_rand_norm(),
-                get_rand_norm(),
-                get_rand_norm(),
-                get_rand_norm(),
-                get_rand_norm(),
-                get_rand_norm(),
-                get_rand_norm(),
-            ];
-            let random_mult: f32x8 = f32x8::from(vals);
+        for _ in 0..half_steps {
+            let first: f32x8 = get_rand_uniform_f32x8(rng);
+            let second: f32x8 = get_rand_uniform_f32x8(rng);    
 
-            stock_price_mult *= (add * random_mult).exp();
+            let top = (neg_two * first.ln()).sqrt();
+            let sin_rand = (two_pi * second).sin();
+            let cos_rand = (two_pi * second).cos();
+
+            stock_price_mult = stock_price_mult * (add * (top * (sin_rand + cos_rand))).exp();
         }
 
         let price = spot * stock_price_mult - strike;
@@ -56,6 +53,10 @@ pub fn call_price(
 fn valid_price() {
     use bytemuck::cast;
 
+    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
+    rand::thread_rng().fill_bytes(&mut *seed);
+    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
     let price: [f32; 8] = cast(
         call_price(
             f32x8::splat(100.0),
@@ -65,7 +66,8 @@ fn valid_price() {
             f32x8::splat(0.5),
             f32x8::splat(0.02),
             100.0,
-            1000.0
+            1000.0,
+            &mut rng
         )
     );
     println!("mc32x8 {}", price[0]);
