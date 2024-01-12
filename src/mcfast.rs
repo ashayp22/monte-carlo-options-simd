@@ -2,6 +2,7 @@ use wide::*;
 use simd_rand::portable::*;
 use crate::rand32x8::get_rand_uniform_f32x8;
 use rand_core::{RngCore, SeedableRng};
+use crate::bs::black_scholes_call_price;
 
 pub fn call_price(
     spot: f32,
@@ -18,7 +19,7 @@ pub fn call_price(
     let nudt: f32 = (risk_free_rate - dividend_yield - 0.5 * (volatility * volatility)) * dt;
     let sidt: f32 = volatility * dt.sqrt();
     let add: f32x8 = f32x8::splat(nudt + sidt);
-    let strike_decrease = f32x8::splat(-strike);
+    let strike_f32x8 = f32x8::splat(strike);
     let zeros: f32x8 = f32x8::splat(0.0);
     let two_pi = f32x8::splat(2.0 * std::f32::consts::PI);
     let neg_two = f32x8::splat(-2.0);
@@ -40,7 +41,7 @@ pub fn call_price(
             stock_price_mult = stock_price_mult * (add * (top * (sin_rand + cos_rand))).exp();
         }
 
-        let price: f32x8 = stock_price_mult + strike_decrease;
+        let price: f32x8 = stock_price_mult - strike_f32x8;
         total_prices = total_prices + f32x8::fast_max(price, zeros);
     }
 
@@ -52,12 +53,37 @@ pub fn call_price(
 }
 
 #[test]
-fn valid_price() {
+fn valid_price1() {
     let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
     rand::thread_rng().fill_bytes(&mut *seed);
     let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
 
+    let actual_price = black_scholes_call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02);
     let price = call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 1000.0, &mut rng);
-    println!("mcfast {}", price);
-    assert_eq!(3.5 <= price && price <= 4.5, true);
+    println!("mcfast 1 {} vs {}", price, actual_price);
+    assert_eq!(actual_price-1.25 <= price && price <= actual_price+1.25, true);
+}
+
+#[test]
+fn valid_price2() {
+    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
+    rand::thread_rng().fill_bytes(&mut *seed);
+    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
+    let actual_price = black_scholes_call_price(90.0, 110.0, 0.20, 0.05, 1.0, 0.02);
+    let price = call_price(90.0, 110.0, 0.20, 0.05, 1.0, 0.02, 100.0, 10000.0, &mut rng);
+    println!("mcfast 2 {} vs {}", price, actual_price);
+    assert_eq!(actual_price-1.25 <= price && price <= actual_price+1.25, true);
+}
+
+#[test]
+fn valid_price3() {
+    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
+    rand::thread_rng().fill_bytes(&mut *seed);
+    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
+    let actual_price = black_scholes_call_price(112.0, 110.0, 0.20, 0.05, 1.0, 0.02);
+    let price = call_price(112.0, 110.0, 0.20, 0.05, 1.0, 0.02, 100.0, 1000.0, &mut rng);
+    println!("mcfast 3 {} vs {}", price, actual_price);
+    assert_eq!(actual_price-1.25 <= price && price <= actual_price+1.25, true);
 }

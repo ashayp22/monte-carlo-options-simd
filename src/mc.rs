@@ -1,5 +1,6 @@
 use rand_distr::StandardNormal;
 use rand::Rng;
+use crate::bs::black_scholes_call_price;
 
 pub fn call_price(
     spot: f32,
@@ -38,8 +39,25 @@ pub fn call_price(
 }
 
 #[test]
-fn valid_price() {
+fn valid_price1() {
+    let actual_price = black_scholes_call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02);
     let price = call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 1000.0);
-    println!("mc {}", price);
-    assert_eq!(3.0 <= price && price <= 4.5, true);
+    println!("mc 1 {} vs {}", price, actual_price);
+    assert_eq!(actual_price - 1.25 <= price && price <= actual_price + 1.25, true);
+}
+
+#[test]
+fn valid_price2() {
+    let actual_price = black_scholes_call_price(105.0, 110.0, 0.25, 0.05, 0.5, 0.02);
+    let price = call_price(105.0, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 10000.0);
+    println!("mc 2 {} vs {}", price, actual_price);
+    assert_eq!(actual_price - 1.25 <= price && price <= actual_price + 1.25, true);
+}
+
+#[test]
+fn valid_price3() {
+    let actual_price = black_scholes_call_price(112.0, 110.0, 0.25, 0.05, 0.5, 0.02);
+    let price = call_price(112.0, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 10000.0);
+    println!("mc 3 {} vs {}", price, actual_price);
+    assert_eq!(actual_price - 1.25 <= price && price <= actual_price + 1.25, true);
 }

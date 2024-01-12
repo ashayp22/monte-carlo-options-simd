@@ -16,7 +16,7 @@ fn normal_cdf(x: f32) -> f32 {
     0.5 * (1.0 + erf(x / (2.0f32).sqrt()))
 }
 
-pub fn call_price(
+pub fn black_scholes_call_price(
     spot: f32,
     strike: f32,
     volatility: f32,

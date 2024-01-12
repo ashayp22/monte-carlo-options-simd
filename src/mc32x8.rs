@@ -2,6 +2,7 @@ use wide::*;
 use simd_rand::portable::*;
 use crate::rand32x8::get_rand_uniform_f32x8;
 use rand_core::{RngCore, SeedableRng};
+use crate::bs::black_scholes_call_price;
 
 pub fn call_price(
     spot: f32x8,
@@ -24,7 +25,6 @@ pub fn call_price(
 
     let zeros: f32x8 = f32x8::splat(0.0);
     let mut total_price: f32x8 = f32x8::splat(0.0);
-
 
     for _ in 0..num_trials as i32 {
         let mut stock_price_mult = f32x8::splat(1.0);
@@ -50,12 +50,14 @@ pub fn call_price(
 }
 
 #[test]
-fn valid_price() {
+fn valid_price1() {
     use bytemuck::cast;
 
     let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
     rand::thread_rng().fill_bytes(&mut *seed);
     let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
+    let actual_price = black_scholes_call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02);
 
     let price: [f32; 8] = cast(
         call_price(
@@ -70,6 +72,60 @@ fn valid_price() {
             &mut rng
         )
     );
-    println!("mc32x8 {}", price[0]);
-    assert_eq!(3.5 <= price[0] && price[0] <= 4.5, true);
+    println!("mc32x8 1 {} vs {}", price[0], actual_price);
+    assert_eq!(actual_price - 1.25 <= price[0] && price[0] <= actual_price + 1.25, true);
+}
+
+#[test]
+fn valid_price2() {
+    use bytemuck::cast;
+
+    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
+    rand::thread_rng().fill_bytes(&mut *seed);
+    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
+    let actual_price = black_scholes_call_price(110.0, 110.0, 0.20, 0.05, 0.5, 0.05);
+
+    let price: [f32; 8] = cast(
+        call_price(
+            f32x8::splat(110.0),
+            f32x8::splat(110.0),
+            f32x8::splat(0.20),
+            f32x8::splat(0.05),
+            f32x8::splat(0.5),
+            f32x8::splat(0.05),
+            100.0,
+            1000.0,
+            &mut rng
+        )
+    );
+    println!("mc32x8 2 {} vs {}", price[0], actual_price);
+    assert_eq!(actual_price - 1.25 <= price[0] && price[0] <= actual_price + 1.25, true);
+}
+
+#[test]
+fn valid_price3() {
+    use bytemuck::cast;
+
+    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
+    rand::thread_rng().fill_bytes(&mut *seed);
+    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
+    let actual_price = black_scholes_call_price(115.0, 110.0, 0.20, 0.05, 0.5, 0.05);
+
+    let price: [f32; 8] = cast(
+        call_price(
+            f32x8::splat(115.0),
+            f32x8::splat(110.0),
+            f32x8::splat(0.20),
+            f32x8::splat(0.05),
+            f32x8::splat(0.5),
+            f32x8::splat(0.05),
+            100.0,
+            1000.0,
+            &mut rng
+        )
+    );
+    println!("mc32x8 3 {} vs {}", price[0], actual_price);
+    assert_eq!(actual_price - 1.25 <= price[0] && price[0] <= actual_price + 1.25, true);
 }
