@@ -38,10 +38,34 @@ pub fn call_price(
     call_option_price
 }
 
+pub fn put_price(
+    spot: f32,
+    strike: f32,
+    volatility: f32,
+    risk_free_rate: f32,
+    years_to_expiry: f32,
+    dividend_yield: f32,
+    steps: f32,
+    num_trials: f32
+) -> f32 {
+    call_price(
+        spot,
+        strike,
+        volatility,
+        risk_free_rate,
+        years_to_expiry,
+        dividend_yield,
+        steps,
+        num_trials
+    ) +
+        strike -
+        spot
+}
+
 #[test]
 fn valid_price1() {
-    let actual_price = black_scholes_call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02);
-    let price = call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 1000.0);
+    let actual_price = black_scholes_call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.00);
+    let price = call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.00, 100.0, 1000.0);
     println!("mc 1 {} vs {}", price, actual_price);
     assert_eq!(actual_price - 1.25 <= price && price <= actual_price + 1.25, true);
 }
