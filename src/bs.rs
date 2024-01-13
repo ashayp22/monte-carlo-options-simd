@@ -35,3 +35,22 @@ pub fn black_scholes_call_price(
         strike * (-risk_free_rate * years_to_expiry).exp() * normal_cdf(d2);
     call
 }
+
+pub fn black_scholes_put_price(
+    spot: f32,
+    strike: f32,
+    volatility: f32,
+    risk_free_rate: f32,
+    years_to_expiry: f32,
+    dividend_yield: f32
+) -> f32 {
+    let d1: f32 =
+        ((spot / strike).ln() +
+            (risk_free_rate - dividend_yield + (volatility * volatility) / 2.0) * years_to_expiry) /
+        (volatility * years_to_expiry.sqrt());
+    let d2: f32 = d1 - volatility * years_to_expiry.sqrt();
+
+    let put: f32 = strike * (-risk_free_rate * years_to_expiry).exp() * (1.0 - normal_cdf(d2)) -
+    spot * (-dividend_yield * years_to_expiry).exp() * (1.0 - normal_cdf(d1));
+    put
+}
