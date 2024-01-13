@@ -9,8 +9,8 @@ Available modules:
   - [`mc::put_price`]
 - [`mcfast`] - pricing 1 option with SIMD operations
   - [`mcfast::call_price`]
-  - [`mcfast::call_price_AV`] - apply antithetic variate method to reduce variance in simulated prices
   - [`mcfast::put_price`]
+  - [`mcfast::call_price_av`] - apply antithetic variate method to reduce variance in simulated prices
 - [`mc32x8`] - pricing 8 options with SIMD operations
   - [`mc32x8::call_price`]
   - [`mc32x8::put_price`]

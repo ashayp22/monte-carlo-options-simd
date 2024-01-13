@@ -1,3 +1,5 @@
+// Black-scholes pricer, used to test the Monte-carlo simulation pricers
+
 fn erf(x: f32) -> f32 {
     let t = x.signum();
     let e = x.abs();
