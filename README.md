@@ -2,6 +2,16 @@
 
 Prices European options using Monte Carlo Simulations and achieves a ~7x speed-up with SIMD operations compared to scalar operations. This library requires [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html).
 
+Available modules:
+* [`mc`] - pricing 1 option with scalar operations
+    * [`mc::call_price`]
+    * [`mc::put_price`]
+* [`mcfast`] - pricing 1 option with SIMD operations
+    * [`mcfast::call_price`]
+    * [`mcfast::put_price`]
+* [`mc32x8`] - pricing 8 options with SIMD operations
+    * [`mc32x8::call_price`]
+    * [`mc32x8::put_price`]
 # Background
 
 Monte Carlo simulations are one of the most popular methods of [pricing financial options](https://www.tejwin.com/en/insight/options-pricing-with-monte-carlo-simulation/), especially when a closed form equation is not available. However, these simulations require a large number of trials to calculate the underlying's price over option's lifetime, which motivates the use of SIMD to speed up these calculations. 
