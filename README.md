@@ -102,5 +102,4 @@ Comparing mcfast and mc32x8 (SIMD) to mc (scalar), we get a 6.5-7x improvement i
 * [Another example of Monte Carlo simulations for pricing options](https://www.tejwin.com/en/insight/options-pricing-with-monte-carlo-simulation/)
 * [Designing a SIMD Algorithm from Scratch](https://mcyoung.xyz/2023/11/27/simd-base64/)
 # License
-
-GNU AGPL-3.0-or-later; see [AGPL-v3](LICENSE).
+[GNU GPL v3](LICENSE).
