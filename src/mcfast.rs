@@ -36,6 +36,9 @@ pub fn call_price(
             // Simulate two steps in time in order to have clean, vertical f32x8 operations
             let first_rand: f32x8 = get_rand_uniform_f32x8(rng);
             let second_rand: f32x8 = get_rand_uniform_f32x8(rng);
+
+            // The random f32x8 are uniformly distributed, so we have to
+            // apply the Box-Muller transform to make them normally distributed
             let (sin_rand, cos_rand) = f32x8::sin_cos(two_pi * second_rand);
 
             // Only necessary operations are kept in the innermost loop

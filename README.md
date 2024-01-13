@@ -1,6 +1,6 @@
 # Monte Carlo Options Pricer with SIMD
 
-Prices European options using Monte Carlo Simulations and achieves a ~7x speed-up with SIMD operations compared to scalar operations. This library requires [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html).
+Prices European options using Monte Carlo Simulations and achieves a **~7x** speed-up with SIMD operations compared to scalar operations. This library requires [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html).
 
 Available modules:
 
@@ -21,7 +21,7 @@ Monte Carlo simulations are one of the most popular methods of [pricing financia
 
 SIMD allows us to perform operations on multiple data with one instruction, which is especially helpful in the inner loop of the Monte Carlo simulation where we're doing the same set of operations `n` number of times.
 
-So instead of this:
+So instead of this,
 
 ```rust
 for _ in 0..num_trials {
@@ -54,13 +54,13 @@ The final trick is to reduce the number of math operations inside the inner-most
 
 ```toml
 [dependencies]
-mc_options_simd = { git = "https://github.com/ashayp22/monte-carlo-options-simd" }
+monte_carlo_options_simd = { git = "https://github.com/ashayp22/monte-carlo-options-simd" }
 ```
 
 ```rust
 use rand_core::{RngCore, SeedableRng};
 use simd_rand::portable::*;
-use mc_options_simd::*;
+use monte_carlo_options_simd::*;
 use wide::*;
 
 fn main() {
@@ -68,26 +68,26 @@ fn main() {
     rand::thread_rng().fill_bytes(&mut *seed);
     let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
 
-    let spot : f32 = 50;
+    let spot : f32 = 100.0;
     let strike : f32 = 110.0;
-    let years_to_expiry : f32 = 0.5;
-    let risk_free_rate : f32 = 0.05;
-    let dividend_yield : f32 = 0.02;
     let volatility : f32 = 0.25;
+    let risk_free_rate : f32 = 0.05;
+    let years_to_expiry : f32 = 0.5;
+    let dividend_yield : f32 = 0.02;
 
     // Get a single call option price
-    let call_option_price = mcfast::call_price(spot, strike, years_to_expiry, dividend_yield, volatility, 100.0, 1000.0, &mut rng);
+    let call_option_price: f32 = mcfast::call_price(spot, strike, volatility, risk_free_rate, years_to_expiry, dividend_yield, 100.0, 1000.0, &mut rng);
 
     let spot_increment : f32x8 = f32x8::from([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]);
     let spot : f32x8 = f32x8::splat(spot) + spot_increment;
     let strike_f32x8 : f32x8 = f32x8::splat(strike);
     let years_to_expiry_f32x8 : f32x8 = f32x8::splat(years_to_expiry);
-    let risk_free_rate_f32x8 : f32x8 = f32x8::splat(RISK_FREE_RATE);
-    let dividend_yield_f32x8 : f32x8 = f32x8::splat(risk_free_rate);
+    let risk_free_rate_f32x8 : f32x8 = f32x8::splat(risk_free_rate);
+    let dividend_yield_f32x8 : f32x8 = f32x8::splat(dividend_yield);
     let volatility_f32x8 : f32x8 = f32x8::splat(volatility);
 
     // Get 8 put option prices
-    let call_option_price_f32x8 = mc32x8::put_price(spot, strike_f32x8, volatility_f32x8, risk_free_rate_f32x8, years_to_expiry_f32x8, dividend_yield_f32x8, 100.0, 1000.0, &mut rng);
+    let call_option_price_f32x8: f32x8 = mc32x8::put_price(spot, strike_f32x8, volatility_f32x8, risk_free_rate_f32x8, years_to_expiry_f32x8, dividend_yield_f32x8, 100.0, 1000.0, &mut rng);
 }
 ```
 
