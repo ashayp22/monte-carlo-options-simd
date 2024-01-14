@@ -8,4 +8,4 @@ mod bs;
 
 // Monte-carlo simulation modules
 pub mod mc;
-pub mod mcfast;
+pub mod mc_simd;

@@ -4,16 +4,18 @@ Prices European options and calculates Greeks using Monte Carlo Simulations and 
 
 Available modules:
 
-- [`mcfast`] - pricing options with SIMD operations
-  - [`mcfast::call_price`] - calculate the price of a call option given strike, spot, risk-free rate, dividend, and time to expiry
-  - [`mcfast::put_price`] - calculate the price of a put option
-  - [`mcfast::call_price_av`] - apply antithetic variate method to reduce variance in simulated prices
-  - [`mcfast::call_delta`] - calculate the Delta greek for call options
-  - [`mcfast::put_delta`] - calculate the Delta greek for put options
-  - [`mcfast::gamma`] - calculate Gamma greek
-  - [`mcfast::vega`] - calculate Gamma vega
-  - [`mcfast::call_rho`] - calculate Gamma rho for call options
-  - [`mcfast::put_rho`] - calculate Gamma rho for put options
+- [`mc_simd`] - pricing options with SIMD operations
+  - [`mc_simd::call_price`] - calculate the price of a call option given strike, spot, risk-free rate, dividend, and time to expiry
+  - [`mc_simd::put_price`] - calculate the price of a put option
+  - [`mc_simd::call_price_av`] - apply antithetic variate method to reduce variance in simulated prices
+  - [`mc_simd::call_delta`] - calculate Delta for call options
+  - [`mc_simd::put_delta`] - calculate Delta for put options
+  - [`mc_simd::gamma`] - calculate Gamma
+  - [`mc_simd::vega`] - calculate Vega
+  - [`mc_simd::call_rho`] - calculate Gamma for call options
+  - [`mc_simd::put_rho`] - calculate Gamma for put options
+  - [`mc_simd::call_theta`] - calculate Theta for call options
+  - [`mc_simd::put_theta`] - calculate Theta for put options
 - [`mc`] - pricing options with scalar operations, used to compare performance
   - [`mc::call_price`]
   - [`mc::put_price`]
@@ -53,6 +55,8 @@ We make use of [wide](https://docs.rs/wide/latest/wide/) for SIMD-compatible dat
 
 The final trick is to reduce the number of math operations inside the inner-most loop of the Monte Carlo simulation and use Fused Multiply-Add.
 
+To calculate the Greeks, we get option prices using a Monte Carlo simulation and apply the finite difference method (central difference) to determine Delta, Gamma, Theta, Vega, and Rho.
+
 # Usage
 
 ```toml
@@ -79,7 +83,7 @@ fn main() {
     let dividend_yield : f32 = 0.02;
 
     // Get the option price
-    let call_option_price: f32 = mcfast::call_price(spot, strike, volatility, risk_free_rate, years_to_expiry, dividend_yield, 100.0, 1000.0, &mut rng);
+    let call_option_price: f32 = mc_simd::call_price(spot, strike, volatility, risk_free_rate, years_to_expiry, dividend_yield, 100.0, 1000.0, &mut rng);
 }
 ```
 
@@ -98,14 +102,14 @@ Calculated on a Macbook M1:
 For 112 spots, 1000 trials and 100 steps:
 
 - `mc::call_price()`: ~415ms
-- `mcfast::call_price()`: ~46ms
+- `mc_simd::call_price()`: ~46ms
 
 For 112 spots, 10000 trials and 100 steps:
 
 - `mc::call_price()`: ~4.15s
-- `mcfast::call_price()`: ~469ms
+- `mc_simd::call_price()`: ~469ms
 
-Comparing mcfast (SIMD) to mc (scalar), we get a 9x improvement in speed.
+Comparing mc_simd (SIMD) to mc (scalar), we get a 9x improvement in speed.
 
 # Resources
 

@@ -19,7 +19,6 @@ fn speed_update(two_pi: f32x8, stock_price_mult: f32x8, rng: &mut Xoshiro256Plus
     f32x8::mul_add((-first_rand.ln()).sqrt(), sin_rand + cos_rand, stock_price_mult)
 }
 
-// TODO: caught bug: as risk_free_rate increases, option price decreases
 pub fn call_price(
     spot: f32,
     strike: f32,
@@ -39,7 +38,7 @@ pub fn call_price(
     let strike_f32x8 = f32x8::splat(strike);
     let spot_f32x8 = f32x8::splat(spot);
     let zeros: f32x8 = f32x8::splat(0.0);
-    let nudt_f32x8: f32x8 = f32x8::splat(steps * nudt); // multiply by steps since nudt appears n times in the inner most loop 
+    let nudt_f32x8: f32x8 = f32x8::splat(steps * nudt); // multiply by steps since nudt appears n times in the inner most loop
     let sidt_two_sqrt = f32x8::splat(std::f32::consts::SQRT_2 * sidt); // take the sqrt(2) out of the box muller transform
 
     let half_steps: i32 = (steps as i32) / 2;
@@ -386,7 +385,82 @@ fn price_twice_rfr(
     )
 }
 
-fn call_delta(
+// Price two options with years_to_expiry + and - delta_years_to_expiry
+fn price_twice_time(
+    spot: f32,
+    strike: f32,
+    volatility: f32,
+    risk_free_rate: f32,
+    years_to_expiry: f32,
+    delta_years_to_expiry: f32,
+    dividend_yield: f32,
+    steps: f32,
+    num_trials: f32,
+    call_mult: f32, // 1.0 if pricing a call, -1.0 if pricing a put
+    rng: &mut Xoshiro256PlusPlusX8
+) -> (f32, f32) {
+    let time_plus = years_to_expiry + delta_years_to_expiry;
+    let time_minus = years_to_expiry - delta_years_to_expiry;
+
+    let dt_plus: f32 = time_plus / steps;
+    let dt_minus: f32 = time_minus / steps;
+
+    let nudt_plus: f32 =
+        (risk_free_rate - dividend_yield - 0.5 * (volatility * volatility)) * dt_plus;
+    let nudt_minus: f32 =
+        (risk_free_rate - dividend_yield - 0.5 * (volatility * volatility)) * dt_minus;
+    let sidt_plus: f32 = volatility * dt_plus.sqrt();
+    let sidt_minus: f32 = volatility * dt_minus.sqrt();
+
+    let strike_f32x8 = f32x8::splat(strike * call_mult);
+    let spot_f32x8 = f32x8::splat(spot * call_mult);
+
+    let nudt_plus_f32x8: f32x8 = f32x8::splat(steps * nudt_plus);
+    let nudt_minus_f32x8: f32x8 = f32x8::splat(steps * nudt_minus);
+
+    let zeros: f32x8 = f32x8::splat(0.0);
+    let two_pi = f32x8::splat(2.0 * std::f32::consts::PI);
+    let sidt_two_sqrt_plus = f32x8::splat(std::f32::consts::SQRT_2 * sidt_plus);
+    let sidt_two_sqrt_minus = f32x8::splat(std::f32::consts::SQRT_2 * sidt_minus);
+
+    let half_steps: i32 = (steps as i32) / 2;
+
+    // Calculate two different three stock paths to find the Greek vega
+    let mut total_plus: f32x8 = f32x8::splat(0.0);
+    let mut total_minus: f32x8 = f32x8::splat(0.0);
+
+    for _ in 0..(num_trials as i32) / 8 {
+        let mut stock_price_mult: f32x8 = f32x8::splat(0.0);
+
+        for _ in 0..half_steps {
+            stock_price_mult = speed_update(two_pi, stock_price_mult, rng);
+        }
+
+        total_plus += f32x8::fast_max(
+            f32x8::mul_sub(
+                spot_f32x8,
+                f32x8::mul_add(stock_price_mult, sidt_two_sqrt_plus, nudt_plus_f32x8).exp(),
+                strike_f32x8
+            ),
+            zeros
+        );
+        total_minus += f32x8::fast_max(
+            f32x8::mul_sub(
+                spot_f32x8,
+                f32x8::mul_add(stock_price_mult, sidt_two_sqrt_minus, nudt_minus_f32x8).exp(),
+                strike_f32x8
+            ),
+            zeros
+        );
+    }
+
+    (
+        (total_minus.reduce_add() * (-risk_free_rate * time_minus).exp()) / num_trials,
+        (total_plus.reduce_add() * (-risk_free_rate * time_plus).exp()) / num_trials,
+    )
+}
+
+pub fn call_delta(
     spot: f32,
     delta_spot: f32,
     strike: f32,
@@ -415,7 +489,7 @@ fn call_delta(
     return (price_plus - price_minus) / (2.0 * delta_spot);
 }
 
-fn put_delta(
+pub fn put_delta(
     spot: f32,
     delta_spot: f32,
     strike: f32,
@@ -444,7 +518,7 @@ fn put_delta(
     return (price_plus - price_minus) / (2.0 * delta_spot);
 }
 
-fn gamma(
+pub fn gamma(
     spot: f32,
     delta_spot: f32,
     strike: f32,
@@ -472,7 +546,7 @@ fn gamma(
     return (price_plus - 2.0 * price + price_minus) / (delta_spot * delta_spot);
 }
 
-fn vega(
+pub fn vega(
     spot: f32,
     strike: f32,
     volatility: f32,
@@ -500,7 +574,7 @@ fn vega(
     (price_plus - price_minus) / (200.0 * delta_volatility)
 }
 
-fn call_rho(
+pub fn call_rho(
     spot: f32,
     strike: f32,
     volatility: f32,
@@ -530,7 +604,7 @@ fn call_rho(
     (price_plus - price_minus) / (200.0 * delta_risk_free_rate)
 }
 
-fn put_rho(
+pub fn put_rho(
     spot: f32,
     strike: f32,
     volatility: f32,
@@ -559,6 +633,63 @@ fn put_rho(
     (price_plus - price_minus) / (200.0 * delta_risk_free_rate)
 }
 
+pub fn call_theta(
+    spot: f32,
+    strike: f32,
+    volatility: f32,
+    risk_free_rate: f32,
+    years_to_expiry: f32,
+    delta_years_to_expiry: f32,
+    dividend_yield: f32,
+    steps: f32,
+    num_trials: f32,
+    rng: &mut Xoshiro256PlusPlusX8
+) -> f32 {
+    let (price_minus, price_plus) = price_twice_time(
+        spot,
+        strike,
+        volatility,
+        risk_free_rate,
+        years_to_expiry,
+        delta_years_to_expiry,
+        dividend_yield,
+        steps,
+        num_trials,
+        1.0,
+        rng
+    );
+    // price_minus comes first because it represents a future point in time compared to price_plus
+    (price_minus - price_plus) / (2.0 * delta_years_to_expiry)
+}
+
+pub fn put_theta(
+    spot: f32,
+    strike: f32,
+    volatility: f32,
+    risk_free_rate: f32,
+    years_to_expiry: f32,
+    delta_years_to_expiry: f32,
+    dividend_yield: f32,
+    steps: f32,
+    num_trials: f32,
+    rng: &mut Xoshiro256PlusPlusX8
+) -> f32 {
+    let (price_minus, price_plus) = price_twice_time(
+        spot,
+        strike,
+        volatility,
+        risk_free_rate,
+        years_to_expiry,
+        delta_years_to_expiry,
+        dividend_yield,
+        steps,
+        num_trials,
+        -1.0,
+        rng
+    );
+    (price_minus - price_plus) / (2.0 * delta_years_to_expiry)
+}
+
 #[test]
 fn valid_price1() {
     let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
@@ -567,7 +698,7 @@ fn valid_price1() {
 
     let actual_price = bs::call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02);
     let price = call_price(100.0, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 1000.0, &mut rng);
-    println!("mcfast 1 {} vs {}", price, actual_price);
+    println!("mc_simd 1 {} vs {}", price, actual_price);
     assert_eq!((actual_price - price).abs() <= 1.25, true);
 }
 
@@ -579,7 +710,7 @@ fn valid_price2() {
 
     let actual_price = bs::call_price(90.0, 110.0, 0.2, 0.05, 1.0, 0.02);
     let price = call_price(90.0, 110.0, 0.2, 0.05, 1.0, 0.02, 100.0, 10000.0, &mut rng);
-    println!("mcfast 2 {} vs {}", price, actual_price);
+    println!("mc_simd 2 {} vs {}", price, actual_price);
     assert_eq!((actual_price - price).abs() <= 1.25, true);
 }
 
@@ -591,7 +722,7 @@ fn valid_price3() {
 
     let actual_price = bs::call_price(130.0, 120.0, 0.25, 0.05, 0.5, 0.02);
     let price = call_price(130.0, 120.0, 0.25, 0.05, 0.5, 0.02, 100.0, 1000.0, &mut rng);
-    println!("mcfast 3 {} vs {}", price, actual_price);
+    println!("mc_simd 3 {} vs {}", price, actual_price);
     assert_eq!((actual_price - price).abs() <= 1.25, true);
 }
 
@@ -601,9 +732,9 @@ fn valid_price_4() {
     rand::thread_rng().fill_bytes(&mut *seed);
     let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
 
-    let actual_price = bs::put_price(300.0, 270.0, 0.2, 0.09, 1.0, 0.00);
-    let price = put_price(300.0, 270.0, 0.2, 0.09, 1.0, 0.00, 100.0, 10000.0, &mut rng);
-    println!("mcfast 4 {} vs {}", price, actual_price);
+    let actual_price = bs::put_price(300.0, 270.0, 0.2, 0.09, 1.0, 0.0);
+    let price = put_price(300.0, 270.0, 0.2, 0.09, 1.0, 0.0, 100.0, 10000.0, &mut rng);
+    println!("mc_simd 4 {} vs {}", price, actual_price);
     assert_eq!((actual_price - price).abs() <= 1.0, true);
 }
 
@@ -615,7 +746,7 @@ fn valid_price_av1() {
 
     let actual_price = bs::call_price(112.0, 110.0, 0.2, 0.05, 1.0, 0.02);
     let price = call_price_av(112.0, 110.0, 0.2, 0.05, 1.0, 0.02, 100.0, 10000.0, &mut rng);
-    println!("mcfast av1 {} vs {}", price, actual_price);
+    println!("mc_simd av1 {} vs {}", price, actual_price);
     assert_eq!((actual_price - price).abs() <= 1.0, true);
 }
 
@@ -627,7 +758,7 @@ fn valid_price_av2() {
 
     let actual_price = bs::call_price(112.0, 110.0, 0.14, 0.12, 1.0, 0.02);
     let price = call_price_av(112.0, 110.0, 0.14, 0.12, 1.0, 0.02, 100.0, 10000.0, &mut rng);
-    println!("mcfast av1 {} vs {}", price, actual_price);
+    println!("mc_simd av1 {} vs {}", price, actual_price);
     assert_eq!((actual_price - price).abs() <= 1.0, true);
 }
 
@@ -639,7 +770,7 @@ fn valid_call_delta() {
 
     let actual_delta = bs::call_delta(100.0, 110.0, 0.25, 0.05, 0.5, 0.02);
     let delta = call_delta(100.0, 0.001, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 1000.0, &mut rng);
-    println!("mcfast call delta {} vs {}", delta, actual_delta);
+    println!("mc_simd call delta {} vs {}", delta, actual_delta);
     assert_eq!((delta - actual_delta).abs() < 0.05, true);
 }
 
@@ -651,7 +782,7 @@ fn valid_put_delta() {
 
     let actual_delta = bs::put_delta(100.0, 110.0, 0.25, 0.05, 0.5, 0.02);
     let delta = put_delta(100.0, 0.001, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 1000.0, &mut rng);
-    println!("mcfast put delta {} vs {}", delta, actual_delta);
+    println!("mc_simd put delta {} vs {}", delta, actual_delta);
     assert_eq!((delta - actual_delta).abs() < 0.05, true);
 }
 
@@ -663,7 +794,7 @@ fn valid_gamma() {
 
     let actual_gamma = bs::gamma(100.0, 110.0, 0.25, 0.05, 0.5, 0.02);
     let mc_gamma = gamma(100.0, 0.01, 110.0, 0.25, 0.05, 0.5, 0.02, 100.0, 10000.0, &mut rng);
-    println!("mcfast gamma {} vs {}", mc_gamma, actual_gamma);
+    println!("mc_simd gamma {} vs {}", mc_gamma, actual_gamma);
     assert_eq!((mc_gamma - actual_gamma).abs() < 0.05, true);
 }
 
@@ -675,7 +806,7 @@ fn valid_vega() {
 
     let actual_gamma = bs::vega(100.0, 110.0, 0.1, 0.05, 0.5, 0.02);
     let mc_gamma = vega(100.0, 110.0, 0.1, 0.01, 0.05, 0.5, 0.02, 100.0, 10000.0, &mut rng);
-    println!("mcfast vega {} vs {}", mc_gamma, actual_gamma);
+    println!("mc_simd vega {} vs {}", mc_gamma, actual_gamma);
     assert_eq!((mc_gamma - actual_gamma).abs() < 0.05, true);
 }
 
@@ -687,7 +818,7 @@ fn valid_call_rho() {
 
     let actual_rho = bs::call_rho(130.0, 120.0, 0.25, 0.05, 0.5, 0.02);
     let rho = call_rho(130.0, 120.0, 0.25, 0.05, 0.01, 0.5, 0.02, 100.0, 10000.0, &mut rng);
-    println!("mcfast call rho {} vs {}", rho, actual_rho);
+    println!("mc_simd call rho {} vs {}", rho, actual_rho);
     assert_eq!((rho - actual_rho).abs() < 0.05, true);
 }
 
@@ -699,6 +830,42 @@ fn valid_put_rho() {
 
     let actual_rho = bs::put_rho(110.0, 120.0, 0.1, 0.1, 0.5, 0.02);
     let rho = put_rho(110.0, 120.0, 0.1, 0.1, 0.01, 0.5, 0.02, 100.0, 10000.0, &mut rng);
-    println!("mcfast put rho {} vs {}", rho, actual_rho);
+    println!("mc_simd put rho {} vs {}", rho, actual_rho);
     assert_eq!((rho - actual_rho).abs() < 0.05, true);
+}
+
+#[test]
+fn valid_call_theta() {
+    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
+    rand::thread_rng().fill_bytes(&mut *seed);
+    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
+    let actual_theta = bs::call_theta(110.0, 120.0, 0.1, 0.1, 0.5, 0.02);
+    let theta = call_theta(110.0, 120.0, 0.1, 0.1, 0.5, 0.001, 0.02, 100.0, 10000.0, &mut rng);
+    println!("mc_simd call theta {} vs {}", theta, actual_theta);
+    assert_eq!((theta - actual_theta).abs() < 0.1, true);
+}
+
+#[test]
+fn valid_put_theta() {
+    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
+    rand::thread_rng().fill_bytes(&mut *seed);
+    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
+    let actual_theta = bs::put_theta(110.0, 120.0, 0.1, 0.1, 0.5, 0.02);
+    let theta = put_theta(110.0, 120.0, 0.1, 0.1, 0.5, 0.001, 0.02, 100.0, 10000.0, &mut rng);
+    println!("mc_simd put theta {} vs {}", theta, actual_theta);
+    assert_eq!((theta - actual_theta).abs() < 0.1, true);
+}
+
+#[test]
+fn valid_put_theta2() {
+    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
+    rand::thread_rng().fill_bytes(&mut *seed);
+    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+
+    let actual_theta = bs::put_theta(130.0, 120.0, 0.1, 0.1, 0.5, 0.02);
+    let theta = put_theta(130.0, 120.0, 0.1, 0.1, 0.5, 0.001, 0.02, 100.0, 10000.0, &mut rng);
+    println!("mc_simd put theta 2 {} vs {}", theta, actual_theta);
+    assert_eq!((theta - actual_theta).abs() < 0.1, true);
 }

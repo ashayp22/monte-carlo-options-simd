@@ -148,3 +148,37 @@ pub(crate) fn put_rho(
     let nd2 = normal_cdf(d2);
     strike * years_to_expiry * (-risk_free_rate * years_to_expiry).exp() * (nd2 - 1.0) / 100.0
 }
+
+pub(crate) fn call_theta(
+    spot: f32,
+    strike: f32,
+    volatility: f32,
+    risk_free_rate: f32,
+    years_to_expiry: f32,
+    dividend_yield: f32
+) -> f32 {
+    let (d1, d2) = d(spot, strike, volatility, risk_free_rate, years_to_expiry, dividend_yield);
+    let result =
+        (-(-dividend_yield * years_to_expiry).exp() * spot * pdf(d1, 0.0, 1.0) * volatility) /
+        (2.0 * years_to_expiry.sqrt());
+    let result_part1 = risk_free_rate * strike * (-risk_free_rate * years_to_expiry).exp();
+    let result_part2 = dividend_yield * spot * (-dividend_yield * years_to_expiry).exp();
+    result - result_part1 * normal_cdf(d2) + result_part2 * normal_cdf(d1)
+}
+
+pub(crate) fn put_theta(
+    spot: f32,
+    strike: f32,
+    volatility: f32,
+    risk_free_rate: f32,
+    years_to_expiry: f32,
+    dividend_yield: f32
+) -> f32 {
+    let (d1, d2) = d(spot, strike, volatility, risk_free_rate, years_to_expiry, dividend_yield);
+    let result =
+        (-(-dividend_yield * years_to_expiry).exp() * spot * pdf(d1, 0.0, 1.0) * volatility) /
+        (2.0 * years_to_expiry.sqrt());
+    let result_part1 = risk_free_rate * strike * (-risk_free_rate * years_to_expiry).exp();
+    let result_part2 = dividend_yield * spot * (-dividend_yield * years_to_expiry).exp();
+    result + result_part1 * normal_cdf(-d2) - result_part2 * normal_cdf(-d1)
+}
