@@ -1,13 +1,14 @@
-# Monte Carlo Options Pricer with SIMD
+# SIMD multithreaded Monte Carlo Options Pricer
 
-Prices European options and calculates Greeks using Monte Carlo Simulations and achieves a **~9x** speed-up with SIMD operations compared to scalar operations. This library requires [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html).
+Prices European options and calculates Greeks using Monte Carlo Simulations and achieves up to **~40x** speed-up with multithreading and SIMD operations. This library requires [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html).
 
 Available modules:
 
 - [`mc_simd`] - pricing options with SIMD operations
   - [`mc_simd::call_price`] - calculate the price of a call option given strike, spot, risk-free rate, dividend, and time to expiry
   - [`mc_simd::put_price`] - calculate the price of a put option
-  - [`mc_simd::call_price_av`] - apply antithetic variate method to reduce variance in simulated prices
+  - [`mc_simd::call_price_av`] - calculate the price of a call option with reduced variance
+  - [`mc_simd::put_price_av`] - calculate the price of a put option with reduced variance
   - [`mc_simd::call_delta`] - calculate Delta for call options
   - [`mc_simd::put_delta`] - calculate Delta for put options
   - [`mc_simd::gamma`] - calculate Gamma
@@ -51,11 +52,9 @@ for _ in 0..num_trials/8 {
 }
 ```
 
-We make use of [wide](https://docs.rs/wide/latest/wide/) for SIMD-compatible data types and [simd-rand](https://github.com/ashayp22/simd-rand) for vectorized random number generation to get 6-8x speed-up when generating random numbers inside the inner-most loop of the Monte Carlo simulation as opposed to individually generating 8 random, normally distributed numbers inside the inner-most loop.
+We make use of [wide](https://docs.rs/wide/latest/wide/) for SIMD-compatible data types and [simd-rand](https://github.com/ashayp22/simd-rand) for vectorized random number generation to get 6-8x speed-up when generating random numbers inside the inner-most loop of the Monte Carlo simulation as opposed to individually generating 8 random, normally distributed numbers inside the inner-most loop. We also reduce the number of math operations inside the inner-most loop of the Monte Carlo simulation and use Fused Multiply-Add. [rayon](https://docs.rs/rayon/latest/rayon/index.html#) is used to parallelize the Monte Carlo trials and get an extra performance boost.
 
-The final trick is to reduce the number of math operations inside the inner-most loop of the Monte Carlo simulation and use Fused Multiply-Add.
-
-To calculate the Greeks, we get option prices using a Monte Carlo simulation and apply the finite difference method (central difference) to determine Delta, Gamma, Theta, Vega, and Rho.
+To calculate the Greeks, we get option prices using a Monte Carlo simulation and apply the [finite difference method (central difference)](https://en.wikipedia.org/wiki/Finite_difference) to determine Delta, Gamma, Theta, Vega, and Rho.
 
 # Usage
 
@@ -65,25 +64,21 @@ monte_carlo_options_simd = { git = "https://github.com/ashayp22/monte-carlo-opti
 ```
 
 ```rust
-use rand_core::{RngCore, SeedableRng};
-use simd_rand::portable::*;
 use monte_carlo_options_simd::*;
 use wide::*;
 
 fn main() {
-    let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
-    rand::thread_rng().fill_bytes(&mut *seed);
-    let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
-
     let spot : f32 = 100.0;
     let strike : f32 = 110.0;
     let volatility : f32 = 0.25;
     let risk_free_rate : f32 = 0.05;
     let years_to_expiry : f32 = 0.5;
     let dividend_yield : f32 = 0.02;
+    let steps: f32 = 100.0;
+    let num_trials: f32 = 1000.0;
 
     // Get the option price
-    let call_option_price: f32 = mc_simd::call_price(spot, strike, volatility, risk_free_rate, years_to_expiry, dividend_yield, 100.0, 1000.0, &mut rng);
+    let call_option_price: f32 = mc_simd::call_price(spot, strike, volatility, risk_free_rate, years_to_expiry, dividend_yield, steps, num_trials);
 }
 ```
 
@@ -99,17 +94,32 @@ cargo run
 
 Calculated on a Macbook M1:
 
-For 112 spots, 1000 trials and 100 steps:
+For 112 spots, 80 trials and 100 steps (~11x improvement in speed):
 
-- `mc::call_price()`: ~415ms
-- `mc_simd::call_price()`: ~46ms
+- `mc::call_price()`: ~33.649ms
+- `mc_simd::call_price()`: ~3.29ms
 
-For 112 spots, 10000 trials and 100 steps:
+For 112 spots, 1000 trials and 100 steps (~27x improvement in speed):
 
-- `mc::call_price()`: ~4.15s
-- `mc_simd::call_price()`: ~469ms
+- `mc::call_price()`: ~419ms
+- `mc_simd::call_price()`: ~15ms
 
-Comparing mc_simd (SIMD) to mc (scalar), we get a 9x improvement in speed.
+For 112 spots, 10000 trials and 100 steps (~40x improvement in speed):
+
+- `mc::call_price()`: ~4.26s
+- `mc_simd::call_price()`: ~104ms
+
+For 112 spots, 2000 trials and 1000 steps (~40x improvement in speed):
+
+- `mc::call_price()`: ~8.22s
+- `mc_simd::call_price()`: ~205ms
+
+For 112 spots, 20000 trials and 100 steps (~40x improvement in speed):
+
+- `mc::call_price()`: ~8.27s
+- `mc_simd::call_price()`: ~207ms
+
+Notice that `mc_simd` performance increases compared to `mc` as the number of trials and steps get larger.
 
 # Resources
 

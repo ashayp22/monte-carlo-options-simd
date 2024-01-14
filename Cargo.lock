@@ -383,6 +383,7 @@ dependencies = [
  "rand",
  "rand_core",
  "rand_distr",
+ "rayon",
  "simd_rand",
  "statrs",
  "wide",
