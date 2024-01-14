@@ -1,19 +1,22 @@
 # Monte Carlo Options Pricer with SIMD
 
-Prices European options using Monte Carlo Simulations and achieves a **~7x** speed-up with SIMD operations compared to scalar operations. This library requires [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html).
+Prices European options and calculates Greeks using Monte Carlo Simulations and achieves a **~9x** speed-up with SIMD operations compared to scalar operations. This library requires [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html).
 
 Available modules:
 
-- [`mc`] - pricing 1 option with scalar operations
+- [`mcfast`] - pricing options with SIMD operations
+  - [`mcfast::call_price`] - calculate the price of a call option given strike, spot, risk-free rate, dividend, and time to expiry
+  - [`mcfast::put_price`] - calculate the price of a put option
+  - [`mcfast::call_price_av`] - apply antithetic variate method to reduce variance in simulated prices
+  - [`mcfast::call_delta`] - calculate the Delta greek for call options
+  - [`mcfast::put_delta`] - calculate the Delta greek for put options
+  - [`mcfast::gamma`] - calculate Gamma greek
+  - [`mcfast::vega`] - calculate Gamma vega
+  - [`mcfast::call_rho`] - calculate Gamma rho for call options
+  - [`mcfast::put_rho`] - calculate Gamma rho for put options
+- [`mc`] - pricing options with scalar operations, used to compare performance
   - [`mc::call_price`]
   - [`mc::put_price`]
-- [`mcfast`] - pricing 1 option with SIMD operations
-  - [`mcfast::call_price`]
-  - [`mcfast::put_price`]
-  - [`mcfast::call_price_av`] - apply antithetic variate method to reduce variance in simulated prices
-- [`mc32x8`] - pricing 8 options with SIMD operations
-  - [`mc32x8::call_price`]
-  - [`mc32x8::put_price`]
 
 # Background
 
@@ -75,19 +78,8 @@ fn main() {
     let years_to_expiry : f32 = 0.5;
     let dividend_yield : f32 = 0.02;
 
-    // Get a single call option price
+    // Get the option price
     let call_option_price: f32 = mcfast::call_price(spot, strike, volatility, risk_free_rate, years_to_expiry, dividend_yield, 100.0, 1000.0, &mut rng);
-
-    let spot_increment : f32x8 = f32x8::from([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]);
-    let spot : f32x8 = f32x8::splat(spot) + spot_increment;
-    let strike_f32x8 : f32x8 = f32x8::splat(strike);
-    let years_to_expiry_f32x8 : f32x8 = f32x8::splat(years_to_expiry);
-    let risk_free_rate_f32x8 : f32x8 = f32x8::splat(risk_free_rate);
-    let dividend_yield_f32x8 : f32x8 = f32x8::splat(dividend_yield);
-    let volatility_f32x8 : f32x8 = f32x8::splat(volatility);
-
-    // Get 8 put option prices
-    let call_option_price_f32x8: f32x8 = mc32x8::put_price(spot, strike_f32x8, volatility_f32x8, risk_free_rate_f32x8, years_to_expiry_f32x8, dividend_yield_f32x8, 100.0, 1000.0, &mut rng);
 }
 ```
 
@@ -105,17 +97,15 @@ Calculated on a Macbook M1:
 
 For 112 spots, 1000 trials and 100 steps:
 
-- `mc::call_price()`: ~300ms
-- `mcfast::call_price()`: ~44ms
-- `mc32x8::call_price()`: ~46ms
+- `mc::call_price()`: ~415ms
+- `mcfast::call_price()`: ~46ms
 
 For 112 spots, 10000 trials and 100 steps:
 
-- `mc::call_price()`: ~3.03s
-- `mcfast::call_price()`: ~442ms
-- `mc32x8::call_price()`: ~463ms
+- `mc::call_price()`: ~4.15s
+- `mcfast::call_price()`: ~469ms
 
-Comparing mcfast and mc32x8 (SIMD) to mc (scalar), we get a 6.5-7x improvement in speed.
+Comparing mcfast (SIMD) to mc (scalar), we get a 9x improvement in speed.
 
 # Resources
 
@@ -125,4 +115,4 @@ Comparing mcfast and mc32x8 (SIMD) to mc (scalar), we get a 6.5-7x improvement i
 
 # License
 
-[GNU GPL v3](LICENSE).
+[GNU GPL v3](LICENSE)
