@@ -52,7 +52,9 @@ for _ in 0..num_trials/8 {
 }
 ```
 
-We make use of [wide](https://docs.rs/wide/latest/wide/) for SIMD-compatible data types and [simd-rand](https://github.com/ashayp22/simd-rand) for vectorized random number generation to get 6-8x speed-up when generating random numbers inside the inner-most loop of the Monte Carlo simulation as opposed to individually generating 8 random, normally distributed numbers inside the inner-most loop. We also reduce the number of math operations inside the inner-most loop of the Monte Carlo simulation and use Fused Multiply-Add. [rayon](https://docs.rs/rayon/latest/rayon/index.html#) is used to parallelize the Monte Carlo trials and get an extra performance boost.
+We make use of [wide](https://docs.rs/wide/latest/wide/) for SIMD-compatible data types and [simd-rand](https://github.com/ashayp22/simd-rand) for vectorized random number generation to get 6-8x speed-up when generating random numbers inside the inner-most loop of the Monte Carlo simulation as opposed to individually generating 8 random, normally distributed numbers inside the inner-most loop. There may be concerns of bias when generating less than 100 random samples, but [xoroshiro256++ is safe from this bias](https://arxiv.org/pdf/1805.01407.pdf).
+
+We also reduce the number of math operations inside the inner-most loop of the Monte Carlo simulation and use Fused Multiply-Add. [rayon](https://docs.rs/rayon/latest/rayon/index.html#) is used to parallelize the Monte Carlo trials and get an extra performance boost.
 
 To calculate the Greeks, we get option prices using a Monte Carlo simulation and apply the [finite difference method (central difference)](https://en.wikipedia.org/wiki/Finite_difference) to determine Delta, Gamma, Theta, Vega, and Rho.
 
@@ -129,7 +131,7 @@ Notice that `mc_simd` performance increases compared to `mc` as the number of tr
 
 # Credits
 
-* [Hassam Uddin](https://github.com/Heasummn) for the suggestion to add multithreading
+* [Hassam Uddin](https://github.com/Heasummn) for the suggestion to add multithreading and look at xoshiro256++ bias
 
 # License
 
