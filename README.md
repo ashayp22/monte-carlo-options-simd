@@ -1,6 +1,6 @@
 # SIMD multithreaded Monte Carlo Options Pricer
 
-Prices European options and calculates Greeks using Monte Carlo Simulations and achieves up to **~40x** speed-up with multithreading and SIMD operations. This library requires [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html).
+Prices European options and calculates Greeks using Monte Carlo Simulations and achieves up to **~40x** speed-up with multithreading and SIMD operations compared to single threading and scalar operations. This library requires [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html).
 
 Available modules:
 
@@ -13,8 +13,8 @@ Available modules:
   - [`mc_simd::put_delta`] - calculate Delta for put options
   - [`mc_simd::gamma`] - calculate Gamma
   - [`mc_simd::vega`] - calculate Vega
-  - [`mc_simd::call_rho`] - calculate Gamma for call options
-  - [`mc_simd::put_rho`] - calculate Gamma for put options
+  - [`mc_simd::call_rho`] - calculate Rho for call options
+  - [`mc_simd::put_rho`] - calculate Rho for put options
   - [`mc_simd::call_theta`] - calculate Theta for call options
   - [`mc_simd::put_theta`] - calculate Theta for put options
 - [`mc`] - pricing options with scalar operations, used to compare performance
