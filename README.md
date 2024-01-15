@@ -52,7 +52,7 @@ for _ in 0..num_trials/8 {
 }
 ```
 
-We make use of [wide](https://docs.rs/wide/latest/wide/) for SIMD-compatible data types and [simd-rand](https://github.com/ashayp22/simd-rand) for vectorized random number generation to get 6-8x speed-up when generating random numbers inside the inner-most loop of the Monte Carlo simulation as opposed to individually generating 8 random, normally distributed numbers inside the inner-most loop. There may be concerns of bias when generating less than 100 random samples, but [xoroshiro256++ is safe from this bias](https://arxiv.org/pdf/1805.01407.pdf).
+We make use of [wide](https://docs.rs/wide/latest/wide/) for SIMD-compatible data types and [simd-rand](https://github.com/ashayp22/simd-rand) for vectorized random number generation to get 6-8x speed-up when generating random numbers inside the inner-most loop of the Monte Carlo simulation as opposed to individually generating 8 random, normally distributed numbers inside the inner-most loop. There may be concerns of bias when generating a small sample of random numbers, but [xoroshiro256++ is safe from this bias](https://arxiv.org/pdf/1805.01407.pdf).
 
 We also reduce the number of math operations inside the inner-most loop of the Monte Carlo simulation and use Fused Multiply-Add. [rayon](https://docs.rs/rayon/latest/rayon/index.html#) is used to parallelize the Monte Carlo trials and get an extra performance boost.
 
