@@ -49,10 +49,9 @@ fn monte_carlo_pricing(
     let total_prices: f32x8 = (0..(num_trials as i32) / 8)
         .into_par_iter()
         .map(|_| {
-            // Get the random number generator for this thread
             let mut seed: Xoshiro256PlusPlusX8Seed = Default::default();
-            rand::thread_rng().fill_bytes(&mut *seed);
-            let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed);
+            rand::thread_rng().fill_bytes(&mut *seed);                                 // Generates the seed for the simd RNG
+            let mut rng: Xoshiro256PlusPlusX8 = Xoshiro256PlusPlusX8::from_seed(seed); // Get the random number generator for this thread
 
             let mut stock_price_mult: f32x8 = f32x8::splat(0.0);
 
