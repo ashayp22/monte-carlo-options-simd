@@ -127,6 +127,10 @@ Notice that `mc_simd` performance increases compared to `mc` as the number of tr
 - [Another example of Monte Carlo simulations for pricing options](https://www.tejwin.com/en/insight/options-pricing-with-monte-carlo-simulation/)
 - [Designing a SIMD Algorithm from Scratch](https://mcyoung.xyz/2023/11/27/simd-base64/)
 
+# Credits
+
+* [Hassam Uddin](https://github.com/Heasummn) for the suggestion to add multithreading
+
 # License
 
 [GNU GPL v3](LICENSE)
