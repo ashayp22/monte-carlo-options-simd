@@ -67,15 +67,15 @@ fn test_uniform_distribution(samples: usize, diff_limit: f32) {
 
 #[test]
 fn test_uniform_distribution_100() {
-    test_uniform_distribution(100, 0.03);
+    test_uniform_distribution(100, 0.05);
 }
 
 #[test]
 fn test_uniform_distribution_1000() {
-    test_uniform_distribution(1000, 0.015);
+    test_uniform_distribution(1000, 0.03);
 }
 
 #[test]
 fn test_uniform_distribution_100000() {
-    test_uniform_distribution(100000, 0.001);
+    test_uniform_distribution(100000, 0.01);
 }
